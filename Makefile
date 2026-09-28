@@ -1,5 +1,5 @@
-# LF-CapCheck build. This Makefile is the source of truth for flags (Homebrew builds with it);
-# the Xcode project mirrors them for editing/debugging.
+# LF-CapCheck build. This Makefile is the source of truth for flags; the Xcode project mirrors
+# them for editing/debugging.
 
 NAME    := lf-capcheck
 SRC_DIR := LF-CapCheck
@@ -7,7 +7,10 @@ BUILD   := build
 PREFIX  ?= /usr/local
 CC      ?= clang
 
-WARN    := -std=c17 -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow \
+# Warnings are errors while developing. Packagers can pass WERROR= so that a newer compiler's
+# new warning cannot break a build on someone else's machine.
+WERROR  ?= -Werror
+WARN    := -std=c17 -Wall -Wextra -Wpedantic $(WERROR) -Wconversion -Wshadow \
            -Wstrict-prototypes -Wmissing-prototypes -Wformat=2
 # Strict -std=c17 hides POSIX/BSD APIs (mkdtemp, fchmod, strlcpy...) on macOS.
 PLATFORM := -D_DARWIN_C_SOURCE
@@ -16,7 +19,12 @@ INCLUDE := -I$(SRC_DIR)
 DEPFLAGS = -MMD -MP
 
 # _FORTIFY_SOURCE is release-only: the sanitizer build defines it as 0 itself.
-REL_CFLAGS  = $(WARN) $(PLATFORM) $(HARDEN) -D_FORTIFY_SOURCE=2 $(INCLUDE) -O2 $(DEPFLAGS)
+# The oldest macOS the release binary runs on. Without this the binary would require the macOS
+# version of the SDK it was built with.
+MIN_MACOS ?= 14.0
+REL_TARGET  = -mmacosx-version-min=$(MIN_MACOS)
+
+REL_CFLAGS  = $(WARN) $(PLATFORM) $(HARDEN) $(REL_TARGET) -D_FORTIFY_SOURCE=2 $(INCLUDE) -O2 $(DEPFLAGS)
 TEST_CFLAGS = $(WARN) $(PLATFORM) $(HARDEN) $(INCLUDE) -O1 -g -fno-omit-frame-pointer \
               -fsanitize=address,undefined -fno-sanitize-recover=undefined \
               -I tests $(DEPFLAGS)
@@ -67,7 +75,7 @@ BIN := $(BUILD)/$(NAME)
 all: $(BIN)
 
 $(BIN): $(REL_OBJS)
-	$(CC) $(REL_OBJS) -o $@
+	$(CC) $(REL_TARGET) $(REL_OBJS) -o $@
 	@if [ "$$(uname)" = "Darwin" ]; then codesign --force --options runtime -s - $@; fi
 
 $(BUILD)/rel/%.o: %.c

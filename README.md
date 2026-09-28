@@ -39,20 +39,12 @@ Claude Code ──(status line JSON)──▶ lf-capcheck statusline ──▶ s
 
 ## Requirements
 
-- macOS 14 or later, with the Xcode command line tools (`xcode-select --install`)
+- macOS 14 or later
 - A Claude Pro or Max plan (the limits only exist for subscribers)
 
 ## Install
 
-Homebrew packaging is planned. For now, build from source:
-
-```bash
-git clone <this repository> && cd LF-CapCheck
-make
-make install PREFIX=$HOME/.local      # or PREFIX=/usr/local (needs sudo)
-```
-
-Make sure the `bin` folder under your prefix is on your `PATH`.
+Installation instructions will appear here when the first release is published.
 
 ## Connect Claude (one time)
 
@@ -122,29 +114,10 @@ belongs to someone else, or is accessible to other users is refused.
   corrupted (writes are atomic) and the next update repairs it.
 - Bars use block characters and expect a UTF-8 terminal.
 - Codex is listed as "coming soon". A provider is only added when there is an official, terms-
-  compliant source for its usage data. See [TODO.md](TODO.md) for what is blocking it.
+  compliant source for its usage data.
 
 ## Uninstall
 
 1. Remove the `statusLine` entry from `~/.claude/settings.json`.
 2. Delete the data: `rm -r ~/Library/Application\ Support/lf-capcheck`
-3. Delete the program: `rm <prefix>/bin/lf-capcheck`
-
-## Development
-
-```bash
-make            # release build into build/lf-capcheck (ad-hoc signed, hardened runtime)
-make test       # unit tests under AddressSanitizer + UndefinedBehaviorSanitizer
-make fuzz       # mutation fuzzer on every input path (FUZZ_ITERATIONS=100000 FUZZ_SEED=7)
-make analyze    # clang static analyzer, warnings are errors
-make coverage   # line coverage of project code, fails below 80%
-```
-
-- Written in C17. The only dependency is a vendored copy of [cJSON](https://github.com/DaveGamble/cJSON)
-  (`third_party/cJSON.md` records the version and checksums). No network code.
-- The `Makefile` is the source of truth for build flags. The Xcode project mirrors it for editing
-  and debugging (`tests/` is shown as a folder reference; run tests with `make test`).
-- Layout: `cli/` commands, `providers/` usage sources, `store/` snapshot file, `ui/` menu and
-  chart, `util/` shared helpers, `tests/` unit tests and the fuzzer.
-- Adding a provider means adding one `provider_t` (see `providers/provider.h`) and one line in
-  `providers/builtin.c`.
+3. Delete the program from wherever it was installed.
