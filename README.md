@@ -121,3 +121,8 @@ belongs to someone else, or is accessible to other users is refused.
 1. Remove the `statusLine` entry from `~/.claude/settings.json`.
 2. Delete the data: `rm -r ~/Library/Application\ Support/lf-capcheck`
 3. Delete the program from wherever it was installed.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The bundled JSON parser (cJSON) is also MIT-licensed; its notice is in
+`third_party/cJSON.LICENSE`.
