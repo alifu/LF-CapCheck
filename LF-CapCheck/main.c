@@ -4,5 +4,7 @@
 
 int main(int argc, char *argv[])
 {
-    return cli_run(argc, (const char *const *)argv, stdout, stderr);
+    const cli_io_t io = {stdin, stdout, stderr, NULL, 0};
+
+    return cli_run(argc, (const char *const *)argv, &io);
 }

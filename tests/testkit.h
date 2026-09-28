@@ -112,6 +112,21 @@ static inline int tk_make_temp_dir(char *out, size_t cap)
     return mkdtemp(out) != NULL ? 0 : -1;
 }
 
+/* Reads a whole (small) file into buf, NUL-terminated. Returns its length or -1. */
+static inline long tk_read_file(const char *path, char *buf, size_t cap)
+{
+    FILE *file = fopen(path, "rb");
+    size_t used = 0;
+
+    if (file == NULL || cap == 0) {
+        return -1;
+    }
+    used = fread(buf, 1, cap - 1, file);
+    fclose(file);
+    buf[used] = '\0';
+    return (long)used;
+}
+
 /* Removes every entry directly inside `path` (files, symlinks, FIFOs, empty dirs), then `path`. */
 static inline void tk_remove_dir(const char *path)
 {

@@ -4,11 +4,11 @@
 
 #define PERCENT_MAX 100.0
 
-lfcc_status_t usage_fraction_from_percent(double percent, double *out_fraction)
+lfcc_status_t usage_clamp_percent(double percent, double *out_percent)
 {
     double clamped = percent;
 
-    if (out_fraction == NULL) {
+    if (out_percent == NULL) {
         return LFCC_ERR_INVALID_ARG;
     }
     if (!isfinite(percent)) {
@@ -18,6 +18,22 @@ lfcc_status_t usage_fraction_from_percent(double percent, double *out_fraction)
         clamped = 0.0;
     } else if (clamped > PERCENT_MAX) {
         clamped = PERCENT_MAX;
+    }
+    *out_percent = clamped;
+    return LFCC_OK;
+}
+
+lfcc_status_t usage_fraction_from_percent(double percent, double *out_fraction)
+{
+    double clamped = 0.0;
+    lfcc_status_t status = LFCC_OK;
+
+    if (out_fraction == NULL) {
+        return LFCC_ERR_INVALID_ARG;
+    }
+    status = usage_clamp_percent(percent, &clamped);
+    if (status != LFCC_OK) {
+        return status;
     }
     *out_fraction = clamped / PERCENT_MAX;
     return LFCC_OK;

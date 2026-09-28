@@ -27,6 +27,12 @@ typedef struct {
 } usage_snapshot_t;
 
 /*
+ * Clamps a percentage from external data into 0..100. NaN and infinity are
+ * rejected with LFCC_ERR_PARSE and *out_percent is left untouched.
+ */
+lfcc_status_t usage_clamp_percent(double percent, double *out_percent);
+
+/*
  * Converts a 0..100 percentage from external data into a 0.0..1.0 fraction,
  * clamping out-of-range values. NaN and infinity are rejected with
  * LFCC_ERR_PARSE and *out_fraction is left untouched.

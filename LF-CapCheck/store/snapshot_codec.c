@@ -1,10 +1,9 @@
 #include "store/snapshot_codec.h"
 
 #include <math.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <string.h>
 
+#include "util/text_append.h"
 #include "vendor/cJSON.h"
 
 #define PERCENT_MAX 100.0
@@ -38,33 +37,13 @@ static bool record_is_valid(const snap_record_t *record)
 
 /* ---- encode ---- */
 
-/* Appends formatted text; false if it would not fit (with room for the NUL). */
-static bool append(char *out, size_t cap, size_t *used, const char *fmt, ...)
-    __attribute__((format(printf, 4, 5)));
-
-static bool append(char *out, size_t cap, size_t *used, const char *fmt, ...)
-{
-    va_list args;
-    int written = 0;
-
-    va_start(args, fmt);
-    written = vsnprintf(out + *used, cap - *used, fmt, args);
-    va_end(args);
-
-    if (written < 0 || (size_t)written >= cap - *used) {
-        return false;
-    }
-    *used += (size_t)written;
-    return true;
-}
-
 static bool append_window(char *out, size_t cap, size_t *used, const char *key,
                           const snap_window_t *window)
 {
     if (!window->present) {
         return true;
     }
-    return append(out, cap, used, ",\"%s\":{\"used_percentage\":%.6g,\"resets_at\":%lld}", key,
+    return text_append(out, cap, used, ",\"%s\":{\"used_percentage\":%.6g,\"resets_at\":%lld}", key,
                   window->used_percentage, (long long)window->resets_at);
 }
 
@@ -79,11 +58,11 @@ lfcc_status_t snap_encode(const snap_record_t *record, char *out, size_t cap, si
         return LFCC_ERR_CAPACITY;
     }
 
-    if (!append(out, cap, &used, "{\"version\":%d,\"as_of\":%lld", SNAP_VERSION,
+    if (!text_append(out, cap, &used, "{\"version\":%d,\"as_of\":%lld", SNAP_VERSION,
                 (long long)record->as_of) ||
         !append_window(out, cap, &used, "five_hour", &record->five_hour) ||
         !append_window(out, cap, &used, "seven_day", &record->seven_day) ||
-        !append(out, cap, &used, "}\n")) {
+        !text_append(out, cap, &used, "}\n")) {
         out[0] = '\0';
         return LFCC_ERR_CAPACITY;
     }
