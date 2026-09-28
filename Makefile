@@ -9,13 +9,15 @@ CC      ?= clang
 
 WARN    := -std=c17 -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow \
            -Wstrict-prototypes -Wmissing-prototypes -Wformat=2
+# Strict -std=c17 hides POSIX/BSD APIs (mkdtemp, fchmod, strlcpy...) on macOS.
+PLATFORM := -D_DARWIN_C_SOURCE
 HARDEN  := -fstack-protector-strong -fPIE
 INCLUDE := -I$(SRC_DIR)
 DEPFLAGS = -MMD -MP
 
 # _FORTIFY_SOURCE is release-only: the sanitizer build defines it as 0 itself.
-REL_CFLAGS  = $(WARN) $(HARDEN) -D_FORTIFY_SOURCE=2 $(INCLUDE) -O2 $(DEPFLAGS)
-TEST_CFLAGS = $(WARN) $(HARDEN) $(INCLUDE) -O1 -g -fno-omit-frame-pointer \
+REL_CFLAGS  = $(WARN) $(PLATFORM) $(HARDEN) -D_FORTIFY_SOURCE=2 $(INCLUDE) -O2 $(DEPFLAGS)
+TEST_CFLAGS = $(WARN) $(PLATFORM) $(HARDEN) $(INCLUDE) -O1 -g -fno-omit-frame-pointer \
               -fsanitize=address,undefined -fno-sanitize-recover=undefined \
               -I tests $(DEPFLAGS)
 TEST_LDFLAGS = -fsanitize=address,undefined

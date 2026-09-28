@@ -3,8 +3,11 @@
 
 /* Minimal test harness: one executable per test file, no dependencies. */
 
+#include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static int tk_checks = 0;
 static int tk_failures = 0;
@@ -55,7 +58,19 @@ static int tk_failures = 0;
         }                                                                    \
     } while (0)
 
-#define RUN_TEST(fn)                                                         \
+#define CHECK_DOUBLE_EQ(expected, actual, epsilon)                           \
+    do {                                                                     \
+        double tk_e = (expected);                                            \
+        double tk_a = (actual);                                              \
+        tk_checks++;                                                         \
+        if (!(fabs(tk_e - tk_a) <= (epsilon))) {                             \
+            tk_failures++;                                                   \
+            fprintf(stderr, "    FAIL %s:%d: %s == %g, got %g\n", __FILE__,  \
+                    __LINE__, #actual, tk_e, tk_a);                          \
+        }                                                                    \
+    } while (0)
+
+#define RUN_TEST(fn)                                                       \
     do {                                                                     \
         int tk_before = tk_failures;                                         \
         fn();                                                                \
@@ -78,6 +93,22 @@ static inline void tk_read_all(FILE *stream, char *buf, size_t cap)
     }
     used = fread(buf, 1, cap - 1, stream);
     buf[used] = '\0';
+}
+
+/* Creates a fresh private (0700) directory under $TMPDIR. Returns 0 on success. */
+static inline int tk_make_temp_dir(char *out, size_t cap)
+{
+    const char *tmp = getenv("TMPDIR");
+    int written = 0;
+
+    if (tmp == NULL || tmp[0] == '\0') {
+        tmp = "/tmp";
+    }
+    written = snprintf(out, cap, "%s/lfcc-test-XXXXXX", tmp);
+    if (written < 0 || (size_t)written >= cap) {
+        return -1;
+    }
+    return mkdtemp(out) != NULL ? 0 : -1;
 }
 
 #endif /* LFCC_TESTKIT_H */

@@ -251,7 +251,18 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				HEADER_SEARCH_PATHS = "$(SRCROOT)/LF-CapCheck";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				OTHER_CFLAGS = ("-Wall", "-Wextra", "-Wpedantic", "-Wconversion", "-Wshadow", "-Wstrict-prototypes", "-Wmissing-prototypes", "-Wformat=2", "-fstack-protector-strong");
+				OTHER_CFLAGS = (
+					"-Wall",
+					"-Wextra",
+					"-Wpedantic",
+					"-Wconversion",
+					"-Wshadow",
+					"-Wstrict-prototypes",
+					"-Wmissing-prototypes",
+					"-Wformat=2",
+					"-fstack-protector-strong",
+					"-D_DARWIN_C_SOURCE",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -264,7 +275,19 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				HEADER_SEARCH_PATHS = "$(SRCROOT)/LF-CapCheck";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				OTHER_CFLAGS = ("-Wall", "-Wextra", "-Wpedantic", "-Wconversion", "-Wshadow", "-Wstrict-prototypes", "-Wmissing-prototypes", "-Wformat=2", "-fstack-protector-strong", "-D_FORTIFY_SOURCE=2");
+				OTHER_CFLAGS = (
+					"-Wall",
+					"-Wextra",
+					"-Wpedantic",
+					"-Wconversion",
+					"-Wshadow",
+					"-Wstrict-prototypes",
+					"-Wmissing-prototypes",
+					"-Wformat=2",
+					"-fstack-protector-strong",
+					"-D_DARWIN_C_SOURCE",
+					"-D_FORTIFY_SOURCE=2",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
