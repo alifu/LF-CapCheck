@@ -3,6 +3,7 @@
 
 /* Minimal test harness: one executable per test file, no dependencies. */
 
+#include <dirent.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -109,6 +110,29 @@ static inline int tk_make_temp_dir(char *out, size_t cap)
         return -1;
     }
     return mkdtemp(out) != NULL ? 0 : -1;
+}
+
+/* Removes every entry directly inside `path` (files, symlinks, FIFOs, empty dirs), then `path`. */
+static inline void tk_remove_dir(const char *path)
+{
+    DIR *dir = opendir(path);
+    struct dirent *entry = NULL;
+
+    if (dir != NULL) {
+        while ((entry = readdir(dir)) != NULL) {
+            char child[1024];
+
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                continue;
+            }
+            snprintf(child, sizeof child, "%s/%s", path, entry->d_name);
+            if (unlink(child) != 0) {
+                rmdir(child);
+            }
+        }
+        closedir(dir);
+    }
+    rmdir(path);
 }
 
 #endif /* LFCC_TESTKIT_H */
