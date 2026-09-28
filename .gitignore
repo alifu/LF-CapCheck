@@ -1,0 +1,68 @@
+# --- Docs, plans and AI tooling (kept local, never committed) ---
+docs/
+plans/
+*.plan.md
+.claude/
+CLAUDE.md
+graphify-out/
+
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# --- Xcode ---
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM/
+*.dSYM.zip
+.swiftpm/
+Packages/
+
+# --- C build artifacts ---
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.d
+*.gch
+*.pch
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
+coverage/
+compile_commands.json
+.cache/
+
+# --- Editors / IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Secrets and local config (never commit) ---
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.mobileprovision
+
+# --- Logs and temp ---
+*.log
+tmp/
