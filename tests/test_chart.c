@@ -1,6 +1,8 @@
 #include "testkit.h"
 
+#include <limits.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "ui/chart.h"
 
@@ -201,6 +203,23 @@ static void test_bar_width_follows_the_terminal_within_limits(void)
     }
 }
 
+static void test_a_very_wide_terminal_still_draws_the_chart(void)
+{
+    static const int widths[] = {201, 2000, 5000, 65535, INT_MAX};
+
+    for (size_t i = 0; i < sizeof widths / sizeof widths[0]; i++) {
+        usage_snapshot_t snapshot = base_snapshot();
+        chart_options_t opts = options(widths[i], false, true);
+        char out[OUT_CAP];
+
+        render(&snapshot, &opts, out); /* used to fail with "capacity" from about 2000 columns up */
+
+        CHECK_CONTAINS(out, "62% left");
+        CHECK_CONTAINS(out, "as of 11:57 (3 min ago)\n");
+        CHECK(strlen(out) < 600);
+    }
+}
+
 static void test_reset_time_is_shown_in_the_two_most_useful_units(void)
 {
     static const struct {
@@ -341,6 +360,28 @@ static void test_out_of_range_fractions_are_clamped_and_nan_counts_as_used_up(vo
     CHECK_CONTAINS(out, "100% left");
 }
 
+static void test_extreme_timestamps_do_not_overflow(void)
+{
+    static const time_t extremes[] = {0, 1, -1, (time_t)INT64_MAX, (time_t)INT64_MIN};
+
+    /* Found by the fuzzer: INT64_MAX - (-1) is undefined behaviour (the tests run under UBSan). */
+    for (size_t a = 0; a < sizeof extremes / sizeof extremes[0]; a++) {
+        for (size_t b = 0; b < sizeof extremes / sizeof extremes[0]; b++) {
+            usage_snapshot_t snapshot = base_snapshot();
+            chart_options_t opts = options(64, false, true);
+            char out[OUT_CAP];
+
+            snapshot.as_of = extremes[a];
+            snapshot.windows[0].resets_at = extremes[b];
+            snapshot.windows[1].resets_at = extremes[a];
+            opts.now = extremes[b];
+
+            CHECK_INT_EQ(LFCC_OK, chart_render(&snapshot, &opts, out, sizeof out));
+            CHECK(out[0] != '\0');
+        }
+    }
+}
+
 static void test_reports_a_buffer_that_is_too_small(void)
 {
     usage_snapshot_t snapshot = base_snapshot();
@@ -392,6 +433,7 @@ int main(void)
     RUN_TEST(test_no_escape_codes_without_colour);
     RUN_TEST(test_bar_is_never_falsely_empty_or_full);
     RUN_TEST(test_bar_width_follows_the_terminal_within_limits);
+    RUN_TEST(test_a_very_wide_terminal_still_draws_the_chart);
     RUN_TEST(test_reset_time_is_shown_in_the_two_most_useful_units);
     RUN_TEST(test_unknown_reset_time_shows_no_reset_text_and_no_trailing_spaces);
     RUN_TEST(test_age_of_the_data_is_shown_in_readable_units);
@@ -400,6 +442,7 @@ int main(void)
     RUN_TEST(test_all_windows_expired_adds_a_summary_line);
     RUN_TEST(test_no_windows_says_there_is_no_data_yet);
     RUN_TEST(test_out_of_range_fractions_are_clamped_and_nan_counts_as_used_up);
+    RUN_TEST(test_extreme_timestamps_do_not_overflow);
     RUN_TEST(test_reports_a_buffer_that_is_too_small);
     RUN_TEST(test_rejects_invalid_arguments);
     return TESTKIT_RESULT();

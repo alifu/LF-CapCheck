@@ -2,7 +2,10 @@
 
 #include <math.h>
 
-#define PERCENT_MAX 100.0
+#include "util/percent.h"
+
+/* Floating-point error must not turn an exact x.5 tie (e.g. 22.499999999999996) downward. */
+#define ROUNDING_TIE_EPSILON 1e-9
 
 lfcc_status_t usage_clamp_percent(double percent, double *out_percent)
 {
@@ -37,4 +40,25 @@ lfcc_status_t usage_fraction_from_percent(double percent, double *out_fraction)
     }
     *out_fraction = clamped / PERCENT_MAX;
     return LFCC_OK;
+}
+
+int usage_percent_left(double used_fraction)
+{
+    double used = isfinite(used_fraction) ? used_fraction : 1.0;
+
+    used = used < 0.0 ? 0.0 : (used > 1.0 ? 1.0 : used);
+    return (int)((1.0 - used) * PERCENT_MAX + 0.5 + ROUNDING_TIE_EPSILON);
+}
+
+bool usage_all_expired(const usage_snapshot_t *snapshot)
+{
+    if (snapshot == NULL || snapshot->window_count == 0) {
+        return false;
+    }
+    for (size_t i = 0; i < snapshot->window_count; i++) {
+        if (!snapshot->windows[i].expired) {
+            return false;
+        }
+    }
+    return true;
 }

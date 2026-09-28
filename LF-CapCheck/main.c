@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[])
 {
-    const cli_io_t io = {stdin, stdout, stderr, NULL, 0, NULL, terminal_style_detect(stdout)};
+    const cli_io_t io = {stdin, stdout, stderr, NULL, 0, NULL, terminal_style_detect(stdout), 0};
 
     return cli_run(argc, (const char *const *)argv, &io);
 }

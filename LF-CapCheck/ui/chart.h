@@ -9,7 +9,7 @@
 #include "util/status.h"
 
 typedef struct {
-    int width;         /* terminal columns; <= 0 means 80 */
+    int width;         /* terminal columns; <= 0 means 80, above 200 is treated as 200 */
     bool color;        /* ANSI colours on the bars */
     bool unicode;      /* block characters; otherwise '#' and '-' */
     time_t now;        /* current time, epoch seconds */
@@ -28,9 +28,9 @@ typedef struct {
  * colour is never the only signal. A window whose reset time has passed shows
  * "reset - waiting for new data" instead of a bar.
  *
- * Pure: writes only into `out`. LFCC_ERR_INVALID_ARG for NULL arguments, no
- * room for a title, or more than USAGE_MAX_WINDOWS windows; LFCC_ERR_CAPACITY
- * when `cap` is too small (out becomes "").
+ * Pure: writes only into `out`. LFCC_ERR_INVALID_ARG for NULL arguments
+ * (including options->title) or more than USAGE_MAX_WINDOWS windows;
+ * LFCC_ERR_CAPACITY when `cap` is too small (out becomes "").
  */
 lfcc_status_t chart_render(const usage_snapshot_t *snapshot, const chart_options_t *options,
                            char *out, size_t cap);

@@ -28,7 +28,7 @@ static cli_result_t run_cli_with(int argc, const char *const argv[], const char 
     FILE *in = tmpfile();
     FILE *out = tmpfile();
     FILE *err = tmpfile();
-    cli_io_t io = {in, out, err, data_dir, NOW, executable, {80, false, true}};
+    cli_io_t io = {in, out, err, data_dir, NOW, executable, {80, false, true}, 0};
 
     if (input != NULL) {
         fputs(input, in);
@@ -113,7 +113,9 @@ static void test_connect_snippet_uses_the_running_programs_own_path_by_default(v
     cli_result_t result = run_cli_with(1, argv, "1\nq\n", NO_DATA_DIR, NULL);
 
     CHECK_INT_EQ(0, result.exit_code);
-    CHECK_CONTAINS(result.out, "test_cli statusline\"");
+    /* The path may be shell-quoted (a checkout path containing spaces), so check the parts. */
+    CHECK_CONTAINS(result.out, "test_cli");
+    CHECK_CONTAINS(result.out, " statusline\"");
     CHECK_CONTAINS(result.out, "\"statusLine\"");
 }
 
@@ -153,6 +155,18 @@ static void test_unknown_option_fails_with_exit_code_2(void)
     CHECK_CONTAINS(result.err, "--help");
 }
 
+static void test_terminal_escapes_in_an_unknown_option_are_not_echoed_raw(void)
+{
+    const char *const argv[] = {"lf-capcheck", "\x1b[31mred\xc2\x9b"};
+
+    cli_result_t result = run_cli(2, argv, NULL, NULL);
+
+    CHECK_INT_EQ(2, result.exit_code);
+    CHECK(strchr(result.err, '\x1b') == NULL);
+    CHECK(strstr(result.err, "\xc2\x9b") == NULL);
+    CHECK_CONTAINS(result.err, "unknown option '?[31mred?" "?'"); /* split: "??'" is a trigraph */
+}
+
 static void test_statusline_command_reads_stdin_saves_and_prints(void)
 {
     const char *const argv[] = {"lf-capcheck", "statusline"};
@@ -169,11 +183,11 @@ static void test_statusline_command_reads_stdin_saves_and_prints(void)
     result = run_cli(2, argv, json, data_dir);
 
     CHECK_INT_EQ(0, result.exit_code);
+    CHECK_STR_EQ("5h 77% left \xc2\xb7 7d 59% left\n", result.out); /* reset times are after NOW */
     CHECK_STR_EQ("", result.err);
     CHECK_INT_EQ(LFCC_OK, secure_dir_open(data_dir, &fd));
     CHECK_INT_EQ(LFCC_OK, snap_read(fd, &saved));
     CHECK_INT_EQ(NOW, saved.as_of);
-    /* The fixture's reset times are long past relative to NOW+, so only NOW matters here. */
 
     close(fd);
     tk_remove_dir(data_dir);
@@ -189,6 +203,7 @@ int main(void)
     RUN_TEST(test_connect_snippet_uses_the_running_programs_own_path_by_default);
     RUN_TEST(test_the_menu_shows_a_saved_snapshot_end_to_end);
     RUN_TEST(test_unknown_option_fails_with_exit_code_2);
+    RUN_TEST(test_terminal_escapes_in_an_unknown_option_are_not_echoed_raw);
     RUN_TEST(test_statusline_command_reads_stdin_saves_and_prints);
     return TESTKIT_RESULT();
 }

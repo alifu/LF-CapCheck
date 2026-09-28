@@ -27,6 +27,17 @@ typedef struct {
 } usage_snapshot_t;
 
 /*
+ * Whole percent still available for a window that is `used_fraction` used
+ * (0.0..1.0), rounded half up. Out-of-range values are clamped; NaN and
+ * infinity count as used up. Every place that shows a percentage must use this,
+ * so the chart and the status line can never disagree.
+ */
+int usage_percent_left(double used_fraction);
+
+/* True when the snapshot has at least one window and every window has been reset. */
+bool usage_all_expired(const usage_snapshot_t *snapshot);
+
+/*
  * Clamps a percentage from external data into 0..100. NaN and infinity are
  * rejected with LFCC_ERR_PARSE and *out_percent is left untouched.
  */

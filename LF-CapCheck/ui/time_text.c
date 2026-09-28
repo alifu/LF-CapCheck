@@ -2,9 +2,8 @@
 
 #include <stdio.h>
 
-#define SECONDS_PER_MINUTE 60L
-#define SECONDS_PER_HOUR 3600L
-#define SECONDS_PER_DAY 86400L
+#include "util/time_math.h"
+
 
 lfcc_status_t time_text_age(long seconds, char *out, size_t cap)
 {

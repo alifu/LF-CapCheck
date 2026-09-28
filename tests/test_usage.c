@@ -71,8 +71,64 @@ static void test_clamp_percent_rejects_non_finite_and_null(void)
     CHECK_INT_EQ(LFCC_ERR_INVALID_ARG, usage_clamp_percent(1.0, NULL));
 }
 
+static void test_percent_left_rounds_halves_up_on_the_percent_scale(void)
+{
+    static const struct {
+        double used_percent;
+        int left;
+    } cases[] = {
+        {0.0, 100},  {100.0, 0}, {23.5, 77}, {41.2, 59}, {62.0, 38}, {99.6, 0}, {0.4, 100},
+        /* exact ties: 100 - x.5 = y.5 must round up to y + 1, not fall to y by float error */
+        {42.5, 58},  {43.5, 57}, {54.5, 46}, {67.5, 33}, {77.5, 23}, {78.5, 22}, {80.5, 20},
+        {90.5, 10},  {0.5, 100}, {99.5, 1},
+    };
+
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        CHECK_INT_EQ(cases[i].left, usage_percent_left(cases[i].used_percent / 100.0));
+    }
+}
+
+static void test_percent_left_is_consistent_for_every_half_percent(void)
+{
+    for (int half_steps = 0; half_steps <= 200; half_steps++) {
+        double used_percent = half_steps * 0.5;
+        int expected = (int)(100.0 - used_percent + 0.5); /* exact for multiples of 0.5 */
+
+        CHECK_INT_EQ(expected, usage_percent_left(used_percent / 100.0));
+    }
+}
+
+static void test_percent_left_clamps_and_treats_non_finite_as_used_up(void)
+{
+    CHECK_INT_EQ(0, usage_percent_left(1.7));
+    CHECK_INT_EQ(100, usage_percent_left(-0.4));
+    CHECK_INT_EQ(0, usage_percent_left(NAN));
+    CHECK_INT_EQ(0, usage_percent_left(INFINITY));
+    CHECK_INT_EQ(0, usage_percent_left(-INFINITY));
+}
+
+static void test_all_expired_needs_at_least_one_window_and_all_of_them_expired(void)
+{
+    usage_snapshot_t snapshot = {0};
+
+    CHECK(!usage_all_expired(&snapshot)); /* no windows */
+
+    snapshot.window_count = 2;
+    snapshot.windows[0].expired = true;
+    snapshot.windows[1].expired = false;
+    CHECK(!usage_all_expired(&snapshot));
+
+    snapshot.windows[1].expired = true;
+    CHECK(usage_all_expired(&snapshot));
+    CHECK(!usage_all_expired(NULL));
+}
+
 int main(void)
 {
+    RUN_TEST(test_percent_left_rounds_halves_up_on_the_percent_scale);
+    RUN_TEST(test_percent_left_is_consistent_for_every_half_percent);
+    RUN_TEST(test_percent_left_clamps_and_treats_non_finite_as_used_up);
+    RUN_TEST(test_all_expired_needs_at_least_one_window_and_all_of_them_expired);
     RUN_TEST(test_converts_percent_to_fraction);
     RUN_TEST(test_clamps_out_of_range_percent_into_zero_to_one);
     RUN_TEST(test_rejects_non_finite_percent_and_leaves_output_untouched);

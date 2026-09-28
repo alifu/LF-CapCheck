@@ -11,7 +11,9 @@
  * Claude Code may leave a window out of one update; such a window is carried
  * over from `previous` only while it is still valid, i.e. its reset time is
  * known and later than `now`. Windows present in `incoming` always win.
- * The result takes as_of from `incoming`. Neither input is modified.
+ * If a window is carried over, the result takes the older of the two capture
+ * times (the record is only as fresh as its stalest window); otherwise it takes
+ * `incoming`'s. Neither input is modified.
  *
  * LFCC_ERR_INVALID_ARG if `incoming` or `out` is NULL.
  */

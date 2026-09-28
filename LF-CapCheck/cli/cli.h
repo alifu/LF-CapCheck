@@ -19,6 +19,7 @@ typedef struct {
     time_t now;             /* 0: the current time */
     const char *executable; /* NULL: this program's own path (for the connect snippet) */
     terminal_style_t style; /* how the menu draws */
+    unsigned timeout_seconds; /* `statusline` watchdog; 0: the default (5 s) */
 } cli_io_t;
 
 /*

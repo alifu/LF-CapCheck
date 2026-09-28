@@ -25,6 +25,9 @@ lfcc_status_t statusline_format(const snap_record_t *record, time_t now, char *o
  * It must never disturb Claude Code, so once input is being piped in it always
  * returns 0 and stays silent on stdout for input it cannot use. Storage
  * problems are reported as warnings on io->err and never stop the summary.
+ * A watchdog ends the process quietly with status 0 if the input does not
+ * finish within io->timeout_seconds (default 5), and SIGPIPE is ignored while
+ * it runs (both handlers are restored before returning).
  * Run from a terminal (no piped input) it explains itself and returns
  * CLI_EXIT_USAGE instead of waiting for input.
  */

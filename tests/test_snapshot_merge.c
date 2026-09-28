@@ -56,11 +56,39 @@ static void test_carries_forward_a_missing_window_that_has_not_reset_yet(void)
 
     CHECK_INT_EQ(LFCC_OK, snap_merge(&incoming, &previous, NOW, &merged));
 
-    CHECK_INT_EQ(NOW, merged.as_of);
+    CHECK_INT_EQ(NOW - 60, merged.as_of); /* the carried window is that old: do not claim newer */
     CHECK(merged.five_hour.present);
     CHECK_DOUBLE_EQ(55.0, merged.five_hour.used_percentage, EPSILON);
     CHECK_INT_EQ(FIVE_HOUR_RESET, merged.five_hour.resets_at);
     CHECK_DOUBLE_EQ(31.0, merged.seven_day.used_percentage, EPSILON);
+}
+
+static void test_a_carried_window_keeps_the_oldest_capture_time_across_updates(void)
+{
+    snap_record_t first = record_with(NOW - 3600, (snap_window_t){true, 55.0, FIVE_HOUR_RESET},
+                                      (snap_window_t){true, 30.0, SEVEN_DAY_RESET});
+    snap_record_t second = record_with(NOW - 1800, NO_WINDOW, (snap_window_t){true, 31.0, SEVEN_DAY_RESET});
+    snap_record_t third = record_with(NOW, NO_WINDOW, (snap_window_t){true, 32.0, SEVEN_DAY_RESET});
+    snap_record_t merged_once = {0};
+    snap_record_t merged_twice = {0};
+
+    CHECK_INT_EQ(LFCC_OK, snap_merge(&second, &first, NOW - 1800, &merged_once));
+    CHECK_INT_EQ(LFCC_OK, snap_merge(&third, &merged_once, NOW, &merged_twice));
+
+    CHECK_INT_EQ(NOW - 3600, merged_twice.as_of); /* still the age of the 5-hour reading */
+    CHECK_DOUBLE_EQ(55.0, merged_twice.five_hour.used_percentage, EPSILON);
+    CHECK_DOUBLE_EQ(32.0, merged_twice.seven_day.used_percentage, EPSILON);
+}
+
+static void test_nothing_carried_means_the_incoming_capture_time_is_used(void)
+{
+    snap_record_t previous = record_with(NOW - 60, (snap_window_t){true, 55.0, FIVE_HOUR_RESET}, NO_WINDOW);
+    snap_record_t incoming = record_with(NOW, (snap_window_t){true, 10.0, FIVE_HOUR_RESET}, NO_WINDOW);
+    snap_record_t merged = {0};
+
+    CHECK_INT_EQ(LFCC_OK, snap_merge(&incoming, &previous, NOW, &merged));
+
+    CHECK_INT_EQ(NOW, merged.as_of);
 }
 
 static void test_does_not_carry_forward_a_window_that_has_already_reset(void)
@@ -122,6 +150,8 @@ int main(void)
     RUN_TEST(test_keeps_incoming_windows_when_there_is_no_previous_record);
     RUN_TEST(test_incoming_windows_always_win_over_previous_ones);
     RUN_TEST(test_carries_forward_a_missing_window_that_has_not_reset_yet);
+    RUN_TEST(test_a_carried_window_keeps_the_oldest_capture_time_across_updates);
+    RUN_TEST(test_nothing_carried_means_the_incoming_capture_time_is_used);
     RUN_TEST(test_does_not_carry_forward_a_window_that_has_already_reset);
     RUN_TEST(test_does_not_carry_forward_a_window_with_unknown_reset_time);
     RUN_TEST(test_inputs_are_not_modified);

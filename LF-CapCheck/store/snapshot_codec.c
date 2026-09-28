@@ -3,10 +3,10 @@
 #include <math.h>
 #include <string.h>
 
+#include "util/percent.h"
 #include "util/text_append.h"
 #include "vendor/cJSON.h"
 
-#define PERCENT_MAX 100.0
 #define MIN_CAPTURE_TIME 1 /* as_of must be a real time; resets_at may be 0 (unknown) */
 
 /* ---- validation shared by encode and decode ---- */

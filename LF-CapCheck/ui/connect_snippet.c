@@ -4,27 +4,15 @@
 #include <string.h>
 
 #include "util/text_append.h"
+#include "util/utf8.h"
 
-#define ASCII_PRINTABLE_MIN 0x20
-#define ASCII_DELETE 0x7f
 #define SUBCOMMAND " statusline"
+#define COMMAND_MAX 1024 /* the shell command before JSON escaping */
 
 static bool is_shell_safe(unsigned char byte)
 {
     return (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
            (byte >= '0' && byte <= '9') || strchr("_./+@%:,=-", (int)byte) != NULL;
-}
-
-static bool has_control_characters(const char *text)
-{
-    for (const char *cursor = text; *cursor != '\0'; cursor++) {
-        unsigned char byte = (unsigned char)*cursor;
-
-        if (byte < ASCII_PRINTABLE_MIN || byte == ASCII_DELETE) {
-            return true;
-        }
-    }
-    return false;
 }
 
 static bool needs_shell_quoting(const char *path)
@@ -54,7 +42,7 @@ static bool append_shell_word(char *out, size_t cap, size_t *used, const char *p
     return text_append(out, cap, used, "'");
 }
 
-/* Appends `text` escaped for use inside a JSON string. Control characters were rejected earlier. */
+/* Appends `text` escaped for use inside a JSON string. The path was checked to be plain UTF-8 text. */
 static bool append_json_escaped(char *out, size_t cap, size_t *used, const char *text)
 {
     for (const char *cursor = text; *cursor != '\0'; cursor++) {
@@ -69,12 +57,12 @@ static bool append_json_escaped(char *out, size_t cap, size_t *used, const char 
 
 static bool executable_is_usable(const char *executable)
 {
-    return executable != NULL && executable[0] == '/' && !has_control_characters(executable);
+    return executable != NULL && executable[0] == '/' && utf8_is_plain_text(executable);
 }
 
 lfcc_status_t connect_snippet_build(const char *executable, char *out, size_t cap)
 {
-    char command[1024];
+    char command[COMMAND_MAX];
     size_t command_used = 0;
     size_t used = 0;
 

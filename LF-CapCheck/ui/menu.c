@@ -6,8 +6,9 @@
 #include "ui/chart.h"
 #include "ui/connect_snippet.h"
 #include "ui/time_text.h"
+#include "util/time_math.h"
 
-#define LINE_MAX_CHARS 64
+#define ANSWER_MAX_CHARS 64
 #define CHART_TEXT_MAX 2048
 #define SNIPPET_MAX 1024
 #define STATE_TEXT_MAX 96
@@ -15,7 +16,7 @@
 
 typedef enum { NEXT_MAIN, NEXT_QUIT } next_t;
 typedef enum { ANSWER_TEXT, ANSWER_TOO_LONG, ANSWER_END } answer_kind_t;
-typedef enum { KEY_NONE = 0, KEY_RELOAD = 'r', KEY_BACK = 'b', KEY_QUIT = 'q' } key_t;
+typedef enum { KEY_NONE = 0, KEY_RELOAD = 'r', KEY_BACK = 'b', KEY_QUIT = 'q' } menu_key_t;
 
 /* ---- reading answers ---- */
 
@@ -76,11 +77,11 @@ static size_t parse_choice(const char *line, size_t count)
     return value >= 1 && value <= count ? value : 0;
 }
 
-static key_t parse_key(const char *line)
+static menu_key_t parse_key(const char *line)
 {
     int key = line[0] != '\0' && line[1] == '\0' ? tolower((unsigned char)line[0]) : 0;
 
-    return (key == KEY_RELOAD || key == KEY_BACK || key == KEY_QUIT) ? (key_t)key : KEY_NONE;
+    return (key == KEY_RELOAD || key == KEY_BACK || key == KEY_QUIT) ? (menu_key_t)key : KEY_NONE;
 }
 
 /* ---- small helpers ---- */
@@ -97,16 +98,6 @@ static provider_env_t provider_env_for(const menu_env_t *env)
     return provider_env;
 }
 
-static bool all_windows_expired(const usage_snapshot_t *usage)
-{
-    for (size_t i = 0; i < usage->window_count; i++) {
-        if (!usage->windows[i].expired) {
-            return false;
-        }
-    }
-    return usage->window_count > 0;
-}
-
 /* One-line state shown next to a provider on the main page. */
 static void describe_state(const provider_t *provider, const menu_env_t *env, char *text, size_t cap)
 {
@@ -116,10 +107,10 @@ static void describe_state(const provider_t *provider, const menu_env_t *env, ch
 
     switch (provider->load_usage(provider, &provider_env, &usage)) {
     case LFCC_OK:
-        if (all_windows_expired(&usage)) {
+        if (usage_all_expired(&usage)) {
             snprintf(text, cap, "limits reset, waiting for activity");
         } else {
-            time_text_age((long)(provider_env.now - usage.as_of), age, sizeof age);
+            time_text_age(time_seconds_between(usage.as_of, provider_env.now), age, sizeof age);
             snprintf(text, cap, "updated %s", age);
         }
         break;
@@ -172,7 +163,7 @@ static void print_choice_prompt(const registry_t *registry, FILE *out)
 /* Returns the chosen provider, or NULL when the user quits or input ends. */
 static const provider_t *ask_provider(const registry_t *registry, const menu_env_t *env)
 {
-    char line[LINE_MAX_CHARS];
+    char line[ANSWER_MAX_CHARS];
 
     for (;;) {
         answer_kind_t kind = ANSWER_TEXT;
@@ -184,7 +175,7 @@ static const provider_t *ask_provider(const registry_t *registry, const menu_env
             fprintf(env->out, "\n");
             return NULL;
         }
-        if (kind == ANSWER_TEXT && line[0] != '\0' && (line[1] == '\0') && tolower((unsigned char)line[0]) == 'q') {
+        if (kind == ANSWER_TEXT && parse_key(line) == KEY_QUIT) {
             return NULL;
         }
         choice = kind == ANSWER_TEXT ? parse_choice(line, registry_count(registry)) : 0;
@@ -243,13 +234,13 @@ static void show_not_connected(const provider_t *provider, const menu_env_t *env
 }
 
 /* Asks for r/b/q until it gets one. End of input counts as quit. */
-static key_t ask_key(const menu_env_t *env)
+static menu_key_t ask_key(const menu_env_t *env)
 {
-    char line[LINE_MAX_CHARS];
+    char line[ANSWER_MAX_CHARS];
 
     for (;;) {
         answer_kind_t kind = ANSWER_TEXT;
-        key_t key = KEY_NONE;
+        menu_key_t key = KEY_NONE;
 
         fprintf(env->out, "> ");
         fflush(env->out);
@@ -273,7 +264,7 @@ static next_t open_provider(const provider_t *provider, const menu_env_t *env)
         provider_env_t provider_env = provider_env_for(env);
         usage_snapshot_t usage = {0};
         lfcc_status_t status = provider->load_usage(provider, &provider_env, &usage);
-        key_t key = KEY_NONE;
+        menu_key_t key = KEY_NONE;
 
         if (status == LFCC_ERR_UNAVAILABLE) {
             fprintf(env->out, "\n%s is not available yet.\n", provider->display_name);

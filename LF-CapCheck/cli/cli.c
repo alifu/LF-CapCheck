@@ -50,7 +50,7 @@ static int run_menu(const cli_io_t *io)
         env.executable = command_path;
     }
     if (status != LFCC_OK) {
-        log_msg(LFCC_LOG_ERROR, "cannot start: %s", lfcc_status_str(status));
+        log_write(io->err, LFCC_LOG_ERROR, "cannot start: %s", lfcc_status_str(status));
         return CLI_EXIT_ERROR;
     }
     return menu_run(&registry, &env) == MENU_EXIT_OK ? CLI_EXIT_OK : CLI_EXIT_ERROR;
@@ -77,16 +77,12 @@ static int dispatch(int argc, const char *const argv[], const cli_io_t *io)
         return CLI_EXIT_OK;
     }
 
-    fprintf(io->err, "%s: unknown option '%s'\nTry '%s --help'.\n", LFCC_NAME, arg, LFCC_NAME);
+    log_write(io->err, LFCC_LOG_ERROR, "unknown option '%s'", arg); /* sanitised: arg is untrusted */
+    fprintf(io->err, "Try '%s --help'.\n", LFCC_NAME);
     return CLI_EXIT_USAGE;
 }
 
 int cli_run(int argc, const char *const argv[], const cli_io_t *io)
 {
-    int exit_code = 0;
-
-    log_set_stream(io->err);
-    exit_code = dispatch(argc, argv, io);
-    log_set_stream(NULL);
-    return exit_code;
+    return dispatch(argc, argv, io);
 }

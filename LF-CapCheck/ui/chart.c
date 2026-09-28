@@ -1,13 +1,14 @@
 #include "ui/chart.h"
 
-#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "ui/time_text.h"
 #include "util/text_append.h"
+#include "util/time_math.h"
 
 #define DEFAULT_WIDTH 80
+#define WIDTH_MAX 200 /* wider terminals get the same layout; keeps the text bounded */
 #define BAR_MIN 10
 #define BAR_MAX 30
 /* Columns a row needs besides label and bar: " " + bar + " " + "100% left" + "   " + reset text. */
@@ -15,9 +16,6 @@
 #define STALE_AFTER_SECONDS 1800
 #define GREEN_ABOVE_PERCENT 50
 #define YELLOW_FROM_PERCENT 20
-#define SECONDS_PER_MINUTE 60L
-#define SECONDS_PER_HOUR 3600L
-#define SECONDS_PER_DAY 86400L
 #define TEXT_MAX 64
 
 #define ANSI_GREEN "\x1b[32m"
@@ -30,15 +28,6 @@
 static int clamp_int(int value, int low, int high)
 {
     return value < low ? low : (value > high ? high : value);
-}
-
-/* Whole percent left. Non-finite input counts as used up rather than crashing. */
-static int remaining_percent(double used_fraction)
-{
-    double used = isfinite(used_fraction) ? used_fraction : 1.0;
-
-    used = used < 0.0 ? 0.0 : (used > 1.0 ? 1.0 : used);
-    return (int)((1.0 - used) * 100.0 + 0.5);
 }
 
 /* A bar is never drawn empty while something is left, nor full while something is used. */
@@ -67,7 +56,7 @@ static const char *colour_for(int percent_left)
 
 static void format_reset(char *text, size_t cap, time_t resets_at, time_t now)
 {
-    long seconds = (long)(resets_at - now);
+    long seconds = time_seconds_between(now, resets_at);
 
     if (resets_at == 0) {
         text[0] = '\0';
@@ -93,7 +82,7 @@ static void format_as_of(char *text, size_t cap, time_t as_of, time_t now)
     if (localtime_r(&as_of, &local) != NULL) {
         strftime(clock_text, sizeof clock_text, "%H:%M", &local);
     }
-    time_text_age((long)(now - as_of), age_text, sizeof age_text);
+    time_text_age(time_seconds_between(as_of, now), age_text, sizeof age_text);
     snprintf(text, cap, "as of %s (%s)", clock_text, age_text);
 }
 
@@ -139,7 +128,7 @@ static bool append_row(char *out, size_t cap, size_t *used, const usage_window_t
                        int label_width, int bar_width, const chart_options_t *options)
 {
     char reset_text[TEXT_MAX];
-    int percent_left = remaining_percent(window->used_fraction);
+    int percent_left = usage_percent_left(window->used_fraction);
     int filled = filled_cells(percent_left, bar_width);
 
     if (window->expired) {
@@ -158,16 +147,6 @@ static bool append_row(char *out, size_t cap, size_t *used, const usage_window_t
         return false;
     }
     return text_append(out, cap, used, "\n");
-}
-
-static bool all_expired(const usage_snapshot_t *snapshot)
-{
-    for (size_t i = 0; i < snapshot->window_count; i++) {
-        if (!snapshot->windows[i].expired) {
-            return false;
-        }
-    }
-    return true;
 }
 
 static int widest_label(const usage_snapshot_t *snapshot)
@@ -196,7 +175,7 @@ static bool append_body(char *out, size_t cap, size_t *used, const usage_snapsho
             return false;
         }
     }
-    return !all_expired(snapshot) ||
+    return !usage_all_expired(snapshot) ||
            text_append(out, cap, used, "Limits have reset. Waiting for new activity.\n");
 }
 
@@ -211,11 +190,11 @@ lfcc_status_t chart_render(const usage_snapshot_t *snapshot, const chart_options
         return LFCC_ERR_INVALID_ARG;
     }
     out[0] = '\0';
-    width = options->width > 0 ? options->width : DEFAULT_WIDTH;
+    width = options->width > 0 ? clamp_int(options->width, 1, WIDTH_MAX) : DEFAULT_WIDTH;
 
     if (!append_header(out, cap, &used, options, snapshot, width) ||
         !append_body(out, cap, &used, snapshot, options, width) ||
-        (options->now - snapshot->as_of > STALE_AFTER_SECONDS &&
+        (time_seconds_between(snapshot->as_of, options->now) > STALE_AFTER_SECONDS &&
          !text_append(out, cap, &used, "Data may be out of date.\n"))) {
         out[0] = '\0';
         return LFCC_ERR_CAPACITY;

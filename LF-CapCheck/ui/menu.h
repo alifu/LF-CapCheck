@@ -29,9 +29,9 @@ typedef struct {
  *
  * Choosing a provider loads its usage. If it has data, the bar chart is
  * shown ([r] reload, [b] back, [q] quit). If it is not connected yet, the
- * connect screen explains the one-time setup ("auth" for a provider that needs
- * it) and lets you check again. Providers that are not available yet, or
- * whose data cannot be read, say so and return to the main page.
+ * connect screen explains the one-time setup (for Claude: the status line
+ * snippet to paste) and lets you check again. Providers that are not available
+ * yet, or whose data cannot be read, say so and return to the main page.
  *
  * Input is read line by line and end of input quits, so it is scriptable.
  * Returns MENU_EXIT_OK, or MENU_EXIT_ERROR if an argument is missing.

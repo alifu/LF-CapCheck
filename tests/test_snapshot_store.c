@@ -394,6 +394,44 @@ static void test_concurrent_writers_never_expose_a_partial_snapshot(void)
     store_dir_close(&dir);
 }
 
+static void test_write_reports_an_io_error_when_the_directory_is_read_only(void)
+{
+    store_dir_t dir;
+    snap_record_t record = sample_record();
+
+    if (geteuid() == 0) {
+        return; /* root ignores directory permissions */
+    }
+    store_dir_open(&dir);
+    CHECK(chmod(dir.path, 0500) == 0); /* the descriptor is already open; creating files now fails */
+
+    CHECK_INT_EQ(LFCC_ERR_IO, snap_write(dir.fd, &record));
+
+    chmod(dir.path, 0700);
+    CHECK_INT_EQ(0, count_entries(&dir));
+    store_dir_close(&dir);
+}
+
+static void test_write_fails_cleanly_when_a_directory_occupies_the_snapshot_name(void)
+{
+    store_dir_t dir;
+    snap_record_t record = sample_record();
+    char blocker[PATH_CAP];
+    char inside[PATH_CAP + 16];
+
+    store_dir_open(&dir);
+    entry_path(blocker, sizeof blocker, &dir, SNAP_FILE_NAME);
+    CHECK(mkdir(blocker, 0700) == 0);
+    snprintf(inside, sizeof inside, "%s/keep", blocker);
+    write_raw_file(&dir, SNAP_FILE_NAME "/keep", "x", 1, 0600);
+
+    CHECK_INT_EQ(LFCC_ERR_IO, snap_write(dir.fd, &record));
+
+    CHECK_INT_EQ(1, count_entries(&dir)); /* only the blocking directory: no temp file left behind */
+    unlink(inside);
+    store_dir_close(&dir);
+}
+
 static void test_rejects_invalid_arguments(void)
 {
     store_dir_t dir;
@@ -424,6 +462,8 @@ int main(void)
     RUN_TEST(test_read_refuses_a_directory_or_fifo_without_hanging);
     RUN_TEST(test_write_replaces_a_symlink_instead_of_following_it);
     RUN_TEST(test_concurrent_writers_never_expose_a_partial_snapshot);
+    RUN_TEST(test_write_reports_an_io_error_when_the_directory_is_read_only);
+    RUN_TEST(test_write_fails_cleanly_when_a_directory_occupies_the_snapshot_name);
     RUN_TEST(test_rejects_invalid_arguments);
     return TESTKIT_RESULT();
 }
