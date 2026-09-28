@@ -225,6 +225,73 @@ static void test_default_data_dir_reports_small_buffer_and_clears_output(void)
     CHECK_INT_EQ(LFCC_ERR_INVALID_ARG, secure_default_data_dir(tiny, 0));
 }
 
+static void test_open_existing_reports_not_found_and_creates_nothing(void)
+{
+    fixture_t fx;
+    int fd = 5;
+    struct stat info;
+
+    fixture_init(&fx, "absent");
+
+    CHECK_INT_EQ(LFCC_ERR_NOT_FOUND, secure_dir_open_existing(fx.target, &fd));
+    CHECK_INT_EQ(-1, fd);
+    CHECK(stat(fx.target, &info) != 0); /* still absent */
+
+    fixture_cleanup(&fx);
+}
+
+static void test_open_existing_accepts_a_private_directory(void)
+{
+    fixture_t fx;
+    int fd = -1;
+
+    fixture_init(&fx, "data");
+    CHECK(mkdir(fx.target, 0700) == 0);
+
+    CHECK_INT_EQ(LFCC_OK, secure_dir_open_existing(fx.target, &fd));
+    CHECK(fd >= 0);
+
+    if (fd >= 0) {
+        close(fd);
+    }
+    fixture_cleanup(&fx);
+}
+
+static void test_open_existing_applies_the_same_safety_rules(void)
+{
+    fixture_t fx;
+    int fd = -1;
+    int file_fd = 0;
+
+    fixture_init(&fx, "data");
+    CHECK(mkdir(fx.target, 0700) == 0);
+    CHECK(chmod(fx.target, 0750) == 0);
+    CHECK_INT_EQ(LFCC_ERR_UNSAFE_PATH, secure_dir_open_existing(fx.target, &fd));
+    CHECK_INT_EQ(-1, fd);
+    rmdir(fx.target);
+
+    file_fd = open(fx.target, O_CREAT | O_WRONLY, 0600);
+    CHECK(file_fd >= 0);
+    close(file_fd);
+    CHECK_INT_EQ(LFCC_ERR_UNSAFE_PATH, secure_dir_open_existing(fx.target, &fd));
+    unlink(fx.target);
+
+    CHECK(symlink("/tmp", fx.target) == 0);
+    CHECK_INT_EQ(LFCC_ERR_UNSAFE_PATH, secure_dir_open_existing(fx.target, &fd));
+
+    fixture_cleanup(&fx);
+}
+
+static void test_open_existing_rejects_invalid_arguments(void)
+{
+    int fd = 5;
+
+    CHECK_INT_EQ(LFCC_ERR_INVALID_ARG, secure_dir_open_existing(NULL, &fd));
+    CHECK_INT_EQ(-1, fd);
+    CHECK_INT_EQ(LFCC_ERR_INVALID_ARG, secure_dir_open_existing("", &fd));
+    CHECK_INT_EQ(LFCC_ERR_INVALID_ARG, secure_dir_open_existing("/tmp", NULL));
+}
+
 int main(void)
 {
     RUN_TEST(test_creates_missing_directory_with_private_mode);
@@ -238,5 +305,9 @@ int main(void)
     RUN_TEST(test_rejects_null_empty_and_overlong_arguments);
     RUN_TEST(test_default_data_dir_is_under_the_users_home_library);
     RUN_TEST(test_default_data_dir_reports_small_buffer_and_clears_output);
+    RUN_TEST(test_open_existing_reports_not_found_and_creates_nothing);
+    RUN_TEST(test_open_existing_accepts_a_private_directory);
+    RUN_TEST(test_open_existing_applies_the_same_safety_rules);
+    RUN_TEST(test_open_existing_rejects_invalid_arguments);
     return TESTKIT_RESULT();
 }

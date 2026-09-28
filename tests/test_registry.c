@@ -2,11 +2,11 @@
 
 #include "providers/registry.h"
 
-static lfcc_status_t fake_load(const provider_t *self, time_t now,
+static lfcc_status_t fake_load(const provider_t *self, const provider_env_t *env,
                                usage_snapshot_t *out)
 {
     (void)self;
-    (void)now;
+    (void)env;
     (void)out;
     return LFCC_OK;
 }

@@ -115,7 +115,7 @@ static run_result_t run_with_input(const char *data_dir, const void *input, size
     FILE *in = tmpfile();
     FILE *out = tmpfile();
     FILE *err = tmpfile();
-    cli_io_t io = {in, out, err, data_dir, now};
+    cli_io_t io = {in, out, err, data_dir, now, NULL, {80, false, false}};
 
     CHECK(fwrite(input, 1, length, in) == length);
     rewind(in);

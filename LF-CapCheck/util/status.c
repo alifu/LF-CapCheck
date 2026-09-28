@@ -22,6 +22,8 @@ const char *lfcc_status_str(lfcc_status_t status)
                "(symlink, wrong owner or loose permissions)";
     case LFCC_ERR_CAPACITY:
         return "buffer or table is too small";
+    case LFCC_ERR_UNAVAILABLE:
+        return "not available yet";
     }
     return "unknown error";
 }

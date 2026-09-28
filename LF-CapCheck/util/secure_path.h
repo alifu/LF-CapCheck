@@ -23,6 +23,13 @@
 lfcc_status_t secure_dir_open(const char *path, int *fd_out);
 
 /*
+ * Like secure_dir_open() but for reading: never creates the directory.
+ * LFCC_ERR_NOT_FOUND if it does not exist; the same safety rules and other
+ * errors apply. *fd_out is -1 on failure.
+ */
+lfcc_status_t secure_dir_open_existing(const char *path, int *fd_out);
+
+/*
  * Writes "<home>/Library/Application Support/lf-capcheck" for the current
  * user. LFCC_ERR_CAPACITY if `cap` is too small (out becomes "").
  */

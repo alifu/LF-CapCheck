@@ -9,6 +9,12 @@
 #define PROVIDER_SORT_CLAUDE 0
 #define PROVIDER_SORT_CODEX 10
 
+/* What a provider may use from the outside world; injected so tests control it. */
+typedef struct {
+    time_t now;           /* current time, epoch seconds */
+    const char *data_dir; /* the private per-user data directory */
+} provider_env_t;
+
 /*
  * An AI service whose remaining usage can be shown. Instances are static
  * const tables; the menu only depends on this interface.
@@ -19,11 +25,12 @@ typedef struct provider {
     int sort_order;           /* see PROVIDER_SORT_* */
 
     /*
-     * Fills *out from locally available data. `now` is injected so expiry
-     * logic is testable. Returns LFCC_ERR_NOT_CONNECTED when the provider
-     * has not been set up or has produced no data yet.
+     * Fills *out from locally available data. Read-only: it never creates or
+     * changes anything. Returns LFCC_ERR_NOT_CONNECTED when the provider has
+     * not been set up or has produced no data yet, LFCC_ERR_UNAVAILABLE when
+     * it is not implemented yet, and other statuses for unreadable data.
      */
-    lfcc_status_t (*load_usage)(const struct provider *self, time_t now,
+    lfcc_status_t (*load_usage)(const struct provider *self, const provider_env_t *env,
                                 usage_snapshot_t *out);
 } provider_t;
 

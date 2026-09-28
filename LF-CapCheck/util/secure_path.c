@@ -64,25 +64,12 @@ static lfcc_status_t verify_private_directory(int fd)
     return LFCC_OK;
 }
 
-lfcc_status_t secure_dir_open(const char *path, int *fd_out)
+/* Opens `path`, fixes the mode of a directory we just created, and verifies it. */
+static lfcc_status_t open_and_verify(const char *path, int created, int *fd_out)
 {
-    int created = 0;
     int fd = -1;
-    lfcc_status_t status = LFCC_OK;
+    lfcc_status_t status = open_directory_without_following_links(path, &fd);
 
-    if (fd_out == NULL) {
-        return LFCC_ERR_INVALID_ARG;
-    }
-    *fd_out = -1;
-    if (path == NULL || path[0] == '\0') {
-        return LFCC_ERR_INVALID_ARG;
-    }
-
-    status = make_directory_if_missing(path, &created);
-    if (status != LFCC_OK) {
-        return status;
-    }
-    status = open_directory_without_following_links(path, &fd);
     if (status != LFCC_OK) {
         return status;
     }
@@ -99,6 +86,44 @@ lfcc_status_t secure_dir_open(const char *path, int *fd_out)
 
     *fd_out = fd;
     return LFCC_OK;
+}
+
+/* Validates the arguments and resets *fd_out. Returns LFCC_OK when they are usable. */
+static lfcc_status_t check_open_arguments(const char *path, int *fd_out)
+{
+    if (fd_out == NULL) {
+        return LFCC_ERR_INVALID_ARG;
+    }
+    *fd_out = -1;
+    if (path == NULL || path[0] == '\0') {
+        return LFCC_ERR_INVALID_ARG;
+    }
+    return LFCC_OK;
+}
+
+lfcc_status_t secure_dir_open(const char *path, int *fd_out)
+{
+    int created = 0;
+    lfcc_status_t status = check_open_arguments(path, fd_out);
+
+    if (status != LFCC_OK) {
+        return status;
+    }
+    status = make_directory_if_missing(path, &created);
+    if (status != LFCC_OK) {
+        return status;
+    }
+    return open_and_verify(path, created, fd_out);
+}
+
+lfcc_status_t secure_dir_open_existing(const char *path, int *fd_out)
+{
+    lfcc_status_t status = check_open_arguments(path, fd_out);
+
+    if (status != LFCC_OK) {
+        return status;
+    }
+    return open_and_verify(path, 0, fd_out);
 }
 
 lfcc_status_t secure_default_data_dir(char *out, size_t cap)

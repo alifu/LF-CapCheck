@@ -11,7 +11,8 @@ typedef enum {
     LFCC_ERR_PARSE,         /* external data was malformed or out of range */
     LFCC_ERR_TOO_LARGE,     /* external data exceeded a size limit */
     LFCC_ERR_UNSAFE_PATH,   /* path is a symlink, not a directory, or not private to the user */
-    LFCC_ERR_CAPACITY       /* a fixed-size buffer or table is too small */
+    LFCC_ERR_CAPACITY,      /* a fixed-size buffer or table is too small */
+    LFCC_ERR_UNAVAILABLE    /* the feature is not implemented yet ("coming soon") */
 } lfcc_status_t;
 
 /* User-friendly, never-NULL description of a status. */
