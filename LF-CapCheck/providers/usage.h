@@ -37,6 +37,12 @@ int usage_percent_left(double used_fraction);
 /* True when the snapshot has at least one window and every window has been reset. */
 bool usage_all_expired(const usage_snapshot_t *snapshot);
 
+/* Data older than this many seconds is flagged as possibly out of date. */
+#define USAGE_STALE_AFTER_SECONDS 1800
+
+/* True when the snapshot is older than USAGE_STALE_AFTER_SECONDS at `now` (never for NULL or the future). */
+bool usage_is_stale(const usage_snapshot_t *snapshot, time_t now);
+
 /*
  * Clamps a percentage from external data into 0..100. NaN and infinity are
  * rejected with LFCC_ERR_PARSE and *out_percent is left untouched.

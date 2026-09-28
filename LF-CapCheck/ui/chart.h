@@ -14,6 +14,7 @@ typedef struct {
     bool unicode;      /* block characters; otherwise '#' and '-' */
     time_t now;        /* current time, epoch seconds */
     const char *title; /* provider display name, e.g. "Claude" */
+    const char *stale_hint; /* optional sentence after "Data may be out of date."; NULL or "" for none */
 } chart_options_t;
 
 /*

@@ -3,9 +3,9 @@
 #include <ctype.h>
 #include <string.h>
 
-#include "ui/chart.h"
 #include "ui/connect_snippet.h"
 #include "ui/time_text.h"
+#include "ui/usage_view.h"
 #include "util/time_math.h"
 
 #define ANSWER_MAX_CHARS 64
@@ -111,7 +111,8 @@ static void describe_state(const provider_t *provider, const menu_env_t *env, ch
             snprintf(text, cap, "limits reset, waiting for activity");
         } else {
             time_text_age(time_seconds_between(usage.as_of, provider_env.now), age, sizeof age);
-            snprintf(text, cap, "updated %s", age);
+            snprintf(text, cap, "updated %s%s", age,
+                     usage_is_stale(&usage, provider_env.now) ? ", may be out of date" : "");
         }
         break;
     case LFCC_ERR_NOT_CONNECTED:
@@ -192,9 +193,7 @@ static void show_usage(const provider_t *provider, const usage_snapshot_t *usage
                        const menu_env_t *env, time_t now)
 {
     char text[CHART_TEXT_MAX];
-    chart_options_t options = {env->style.width, env->style.color, env->style.unicode, now,
-                               provider->display_name};
-    lfcc_status_t status = chart_render(usage, &options, text, sizeof text);
+    lfcc_status_t status = usage_view_render(provider, usage, &env->style, now, text, sizeof text);
 
     if (status != LFCC_OK) {
         fprintf(env->out, "\nCannot draw the chart: %s.\n", lfcc_status_str(status));

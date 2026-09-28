@@ -109,7 +109,7 @@ static void test_status_line_and_chart_agree_on_the_percentage_left(void)
         snap_record_t record = record_of((snap_window_t){true, used_percent, FIVE_HOUR_RESET},
                                          (snap_window_t){false, 0, 0});
         usage_snapshot_t usage = {0};
-        chart_options_t options = {80, false, true, NOW, "Test"};
+        chart_options_t options = {80, false, true, NOW, "Test", NULL};
         char line[OUT_CAP];
         char chart[OUT_CAP];
         char expected_line[32];

@@ -13,7 +13,6 @@
 #define BAR_MAX 30
 /* Columns a row needs besides label and bar: " " + bar + " " + "100% left" + "   " + reset text. */
 #define ROW_OVERHEAD 30
-#define STALE_AFTER_SECONDS 1800
 #define GREEN_ABOVE_PERCENT 50
 #define YELLOW_FROM_PERCENT 20
 #define TEXT_MAX 64
@@ -179,6 +178,14 @@ static bool append_body(char *out, size_t cap, size_t *used, const usage_snapsho
            text_append(out, cap, used, "Limits have reset. Waiting for new activity.\n");
 }
 
+static bool append_stale_note(char *out, size_t cap, size_t *used, const char *hint)
+{
+    if (hint == NULL || hint[0] == '\0') {
+        return text_append(out, cap, used, "Data may be out of date.\n");
+    }
+    return text_append(out, cap, used, "Data may be out of date. %s\n", hint);
+}
+
 lfcc_status_t chart_render(const usage_snapshot_t *snapshot, const chart_options_t *options,
                            char *out, size_t cap)
 {
@@ -194,8 +201,8 @@ lfcc_status_t chart_render(const usage_snapshot_t *snapshot, const chart_options
 
     if (!append_header(out, cap, &used, options, snapshot, width) ||
         !append_body(out, cap, &used, snapshot, options, width) ||
-        (time_seconds_between(snapshot->as_of, options->now) > STALE_AFTER_SECONDS &&
-         !text_append(out, cap, &used, "Data may be out of date.\n"))) {
+        (usage_is_stale(snapshot, options->now) &&
+         !append_stale_note(out, cap, &used, options->stale_hint))) {
         out[0] = '\0';
         return LFCC_ERR_CAPACITY;
     }

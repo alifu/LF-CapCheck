@@ -47,6 +47,17 @@ static lfcc_status_t load_all_expired(const provider_t *self, const provider_env
     return LFCC_OK;
 }
 
+/* Data captured 3h 05m before NOW: older than the 30-minute freshness limit. */
+static lfcc_status_t load_stale(const provider_t *self, const provider_env_t *env, usage_snapshot_t *out)
+{
+    (void)self;
+    (void)env;
+    loads++;
+    fill_usage(out, false);
+    out->as_of = NOW - (3 * 3600 + 5 * 60);
+    return LFCC_OK;
+}
+
 static lfcc_status_t load_not_connected(const provider_t *self, const provider_env_t *env,
                                         usage_snapshot_t *out)
 {
@@ -92,6 +103,7 @@ static lfcc_status_t load_connects_on_third_call(const provider_t *self, const p
 }
 
 static const provider_t CLAUDE_OK = {"claude", "Claude", PROVIDER_SORT_CLAUDE, load_ok};
+static const provider_t CLAUDE_STALE = {"claude", "Claude", PROVIDER_SORT_CLAUDE, load_stale};
 static const provider_t CLAUDE_EXPIRED = {"claude", "Claude", PROVIDER_SORT_CLAUDE, load_all_expired};
 static const provider_t CLAUDE_NOT_CONNECTED = {"claude", "Claude", PROVIDER_SORT_CLAUDE, load_not_connected};
 static const provider_t CLAUDE_UNREADABLE = {"claude", "Claude", PROVIDER_SORT_CLAUDE, load_unreadable};
@@ -182,6 +194,23 @@ static void test_main_page_describes_every_kind_of_state(void)
     CHECK_CONTAINS(expired_page.out, "1) Claude  limits reset, waiting for activity");
     CHECK_CONTAINS(unreadable_page.out, "1) Claude  saved data cannot be read");
     CHECK_CONTAINS(not_connected_page.out, "Choose a provider (1) or q to quit: ");
+}
+
+static void test_old_data_is_flagged_on_the_main_page_and_on_the_usage_screen(void)
+{
+    registry_t registry = registry_of(&CLAUDE_STALE, NULL);
+    menu_result_t result = run(&registry, "1\nq\n");
+
+    CHECK_CONTAINS(result.out, "1) Claude  updated 3h 05m ago, may be out of date");
+    CHECK_CONTAINS(result.out, "Data may be out of date. Claude Code reports your limits while it runs");
+}
+
+static void test_fresh_data_carries_no_staleness_notes(void)
+{
+    registry_t registry = registry_of(&CLAUDE_OK, NULL);
+    menu_result_t result = run(&registry, "1\nq\n");
+
+    CHECK(strstr(result.out, "out of date") == NULL);
 }
 
 /* ---- usage screen ---- */
@@ -450,6 +479,8 @@ int main(void)
 {
     RUN_TEST(test_main_page_lists_providers_in_order_with_their_state);
     RUN_TEST(test_main_page_describes_every_kind_of_state);
+    RUN_TEST(test_old_data_is_flagged_on_the_main_page_and_on_the_usage_screen);
+    RUN_TEST(test_fresh_data_carries_no_staleness_notes);
     RUN_TEST(test_choosing_a_connected_provider_shows_the_chart_and_back_returns);
     RUN_TEST(test_reload_reads_the_data_again);
     RUN_TEST(test_quit_works_from_the_usage_screen_without_returning_to_the_main_page);

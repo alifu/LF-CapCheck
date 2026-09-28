@@ -19,6 +19,7 @@
 
 #include "cli/statusline.h"
 #include "providers/builtin.h"
+#include "providers/claude.h"
 #include "providers/claude_input.h"
 #include "store/snapshot_store.h"
 #include "testkit.h"
@@ -27,6 +28,7 @@
 #include "ui/executable_path.h"
 #include "ui/menu.h"
 #include "ui/time_text.h"
+#include "ui/watch.h"
 #include "util/log.h"
 #include "util/utf8.h"
 #include "util/secure_path.h"
@@ -565,6 +567,76 @@ static void fuzz_time_text(char *buffer)
     (void)buffer;
 }
 
+/* ---- watch mode: argument parser and loop ---- */
+
+static void fuzz_watch_args(char *buffer)
+{
+    static const char *const pool[] = {"--interval", "5", "0", "3601", "1", "3600", "claude", "codex",
+                                       "-x", "--", "", "-", "--interval=5", " 5", "--watch",
+                                       "99999999999999999999", "\xff", "+5", "5 "};
+    char randoms[6][64];
+    const char *args[6];
+    int argc = (int)rng_below(6);
+    watch_options_t options = {0};
+    char error[128];
+    lfcc_status_t status = LFCC_OK;
+
+    for (int i = 0; i < argc; i++) {
+        if (rng_below(5) == 0) {
+            size_t length = rng_below(sizeof randoms[i] - 1);
+
+            random_bytes(randoms[i], length);
+            randoms[i][length] = '\0';
+            args[i] = randoms[i];
+        } else {
+            args[i] = pool[rng_below(sizeof pool / sizeof pool[0])];
+        }
+    }
+
+    status = watch_parse_args(argc, argc > 0 ? args : NULL, &options, error, sizeof error);
+    if (status == LFCC_OK) {
+        REQUIRE(options.interval_seconds >= 1 && options.interval_seconds <= WATCH_MAX_INTERVAL_SECONDS);
+        REQUIRE(options.provider_id == NULL || options.provider_id[0] != '-');
+        REQUIRE(!options.clear_screen && options.max_frames == 0);
+    } else {
+        REQUIRE(status == LFCC_ERR_INVALID_ARG);
+        REQUIRE(error[0] != '\0' && strlen(error) < sizeof error);
+    }
+    (void)buffer;
+}
+
+static void fuzz_watch_run(char *buffer)
+{
+    static const char *const lines[] = {"\n", "q\n", "x\n", "r\n", "  Q\n", "quit\n", "\r\n"};
+    size_t length = 0;
+    FILE *in = tmpfile();
+    FILE *out = tmpfile();
+    menu_env_t env = {in, out, menu_dir, "/opt/homebrew/bin/lf-capcheck", NOW, {80, true, true}};
+    watch_options_t options = {(unsigned)(1 + rng_below(5)), NULL, rng_below(2) == 0, 40};
+
+    for (size_t count = rng_below(10); count > 0 && length < 1500; count--) {
+        if (rng_below(4) == 0) {
+            size_t noise = rng_below(150);
+
+            random_bytes(buffer + length, noise);
+            length += noise;
+        } else {
+            const char *line = lines[rng_below(sizeof lines / sizeof lines[0])];
+
+            memcpy(buffer + length, line, strlen(line));
+            length += strlen(line);
+        }
+    }
+    REQUIRE(fwrite(buffer, 1, length, in) == length);
+    rewind(in);
+
+    /* Input is a finite file, so the loop must end (at q, at end of input, or at the frame cap). */
+    REQUIRE(watch_run(claude_provider(), &env, &options) == MENU_EXIT_OK);
+
+    fclose(in);
+    fclose(out);
+}
+
 /* ---- driver ---- */
 
 typedef struct {
@@ -580,6 +652,7 @@ int main(int argc, char *argv[])
         {"menu input", fuzz_menu},                 {"connect snippet + paths", fuzz_snippet},
         {"chart", fuzz_chart},                     {"time text", fuzz_time_text},
         {"text safety (utf8 + log)", fuzz_text_safety},
+        {"watch arguments", fuzz_watch_args},      {"watch loop", fuzz_watch_run},
     };
     unsigned long iterations = argc > 1 ? strtoul(argv[1], NULL, 10) : DEFAULT_ITERATIONS;
     uint64_t seed = argc > 2 ? strtoull(argv[2], NULL, 0) : DEFAULT_SEED;

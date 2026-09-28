@@ -38,7 +38,7 @@ static usage_snapshot_t single(double used_fraction, time_t resets_at, bool expi
 
 static chart_options_t options(int width, bool color, bool unicode)
 {
-    return (chart_options_t){width, color, unicode, NOW, "Claude"};
+    return (chart_options_t){width, color, unicode, NOW, "Claude", NULL};
 }
 
 static void repeat(char *out, size_t cap, const char *piece, int times)
@@ -297,6 +297,28 @@ static void test_warns_when_the_data_is_more_than_half_an_hour_old(void)
     CHECK_CONTAINS(out, "Data may be out of date.\n");
 }
 
+static void test_stale_warning_can_carry_a_provider_specific_hint(void)
+{
+    usage_snapshot_t stale = base_snapshot();
+    usage_snapshot_t fresh = base_snapshot();
+    chart_options_t with_hint = options(64, false, true);
+    chart_options_t empty_hint = options(64, false, true);
+    char out[OUT_CAP];
+
+    stale.as_of = NOW - USAGE_STALE_AFTER_SECONDS - 1;
+    with_hint.stale_hint = "Open Claude Code to refresh.";
+    empty_hint.stale_hint = "";
+
+    render(&stale, &with_hint, out);
+    CHECK_CONTAINS(out, "Data may be out of date. Open Claude Code to refresh.\n");
+
+    render(&stale, &empty_hint, out); /* an empty hint behaves like none */
+    CHECK_CONTAINS(out, "Data may be out of date.\n");
+
+    render(&fresh, &with_hint, out); /* no warning, so no hint either */
+    CHECK(strstr(out, "Open Claude Code") == NULL);
+}
+
 static void test_expired_window_says_it_was_reset_instead_of_drawing_a_bar(void)
 {
     usage_snapshot_t snapshot = base_snapshot();
@@ -438,6 +460,7 @@ int main(void)
     RUN_TEST(test_unknown_reset_time_shows_no_reset_text_and_no_trailing_spaces);
     RUN_TEST(test_age_of_the_data_is_shown_in_readable_units);
     RUN_TEST(test_warns_when_the_data_is_more_than_half_an_hour_old);
+    RUN_TEST(test_stale_warning_can_carry_a_provider_specific_hint);
     RUN_TEST(test_expired_window_says_it_was_reset_instead_of_drawing_a_bar);
     RUN_TEST(test_all_windows_expired_adds_a_summary_line);
     RUN_TEST(test_no_windows_says_there_is_no_data_yet);

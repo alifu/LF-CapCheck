@@ -1,5 +1,7 @@
 #include "providers/codex.h"
 
+/* TODO(codex): blocked on an official usage source; see TODO.md and the note in codex.h. */
+
 static lfcc_status_t codex_load_usage(const provider_t *self, const provider_env_t *env,
                                       usage_snapshot_t *out)
 {

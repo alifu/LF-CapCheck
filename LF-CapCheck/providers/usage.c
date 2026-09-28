@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "util/percent.h"
+#include "util/time_math.h"
 
 /* Floating-point error must not turn an exact x.5 tie (e.g. 22.499999999999996) downward. */
 #define ROUNDING_TIE_EPSILON 1e-9
@@ -48,6 +49,11 @@ int usage_percent_left(double used_fraction)
 
     used = used < 0.0 ? 0.0 : (used > 1.0 ? 1.0 : used);
     return (int)((1.0 - used) * PERCENT_MAX + 0.5 + ROUNDING_TIE_EPSILON);
+}
+
+bool usage_is_stale(const usage_snapshot_t *snapshot, time_t now)
+{
+    return snapshot != NULL && time_seconds_between(snapshot->as_of, now) > USAGE_STALE_AFTER_SECONDS;
 }
 
 bool usage_all_expired(const usage_snapshot_t *snapshot)

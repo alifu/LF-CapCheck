@@ -79,12 +79,21 @@ Make sure the `bin` folder under your prefix is on your `PATH`.
 | Command | What it does |
 |---|---|
 | `lf-capcheck` | Opens the menu. Pick a provider by number. |
+| `lf-capcheck --watch [--interval SECONDS] [PROVIDER]` (or `-w`) | Keeps one provider's chart up to date. Defaults: the first provider (Claude), every 5 seconds (1 to 3600). |
 | `lf-capcheck statusline` | Called by Claude Code, not by you. |
 | `lf-capcheck --help`, `--version` | Help and version. |
 
 In the menu: `r` reloads, `b` goes back, `q` quits. End of input quits too, so it can be scripted.
 Set `NO_COLOR=1` for no colours. Output that is piped or redirected uses plain `#` and `-`
 characters.
+
+In watch mode the chart redraws in place on a terminal (and is appended frame by frame when the
+output is redirected). Press Enter to refresh at once, or type `q` and Enter to quit; Ctrl-C works
+too. Data that arrives while you watch is picked up on the next frame. The terminal mode is never
+changed, so nothing needs restoring afterwards.
+
+Data older than 30 minutes is flagged ("may be out of date") on the menu and under the chart, with
+a hint on how to refresh it.
 
 ## What is stored
 
@@ -113,7 +122,7 @@ belongs to someone else, or is accessible to other users is refused.
   corrupted (writes are atomic) and the next update repairs it.
 - Bars use block characters and expect a UTF-8 terminal.
 - Codex is listed as "coming soon". A provider is only added when there is an official, terms-
-  compliant source for its usage data.
+  compliant source for its usage data. See [TODO.md](TODO.md) for what is blocking it.
 
 ## Uninstall
 

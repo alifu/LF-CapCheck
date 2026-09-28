@@ -1,9 +1,41 @@
 #include "testkit.h"
 
+#include <stdint.h>
+
 #include "providers/usage.h"
 
 #define EPSILON 1e-9
 #define SENTINEL (-1.0)
+
+static void test_data_older_than_half_an_hour_is_stale(void)
+{
+    const time_t now = 1738411200;
+    usage_snapshot_t fresh = {0};
+    usage_snapshot_t edge = {0};
+    usage_snapshot_t stale = {0};
+    usage_snapshot_t from_the_future = {0};
+
+    fresh.as_of = now - 60;
+    edge.as_of = now - USAGE_STALE_AFTER_SECONDS;
+    stale.as_of = now - USAGE_STALE_AFTER_SECONDS - 1;
+    from_the_future.as_of = now + 3600;
+
+    CHECK(!usage_is_stale(&fresh, now));
+    CHECK(!usage_is_stale(&edge, now)); /* exactly 30 minutes is still fine */
+    CHECK(usage_is_stale(&stale, now));
+    CHECK(!usage_is_stale(&from_the_future, now)); /* a clock skew is not staleness */
+}
+
+static void test_staleness_survives_extreme_timestamps(void)
+{
+    usage_snapshot_t snapshot = {0};
+
+    snapshot.as_of = (time_t)INT64_MIN;
+    CHECK(usage_is_stale(&snapshot, (time_t)INT64_MAX)); /* would overflow a plain subtraction */
+    snapshot.as_of = (time_t)INT64_MAX;
+    CHECK(!usage_is_stale(&snapshot, (time_t)INT64_MIN));
+    CHECK(!usage_is_stale(NULL, 100));
+}
 
 static void test_converts_percent_to_fraction(void)
 {
@@ -125,6 +157,8 @@ static void test_all_expired_needs_at_least_one_window_and_all_of_them_expired(v
 
 int main(void)
 {
+    RUN_TEST(test_data_older_than_half_an_hour_is_stale);
+    RUN_TEST(test_staleness_survives_extreme_timestamps);
     RUN_TEST(test_percent_left_rounds_halves_up_on_the_percent_scale);
     RUN_TEST(test_percent_left_is_consistent_for_every_half_percent);
     RUN_TEST(test_percent_left_clamps_and_treats_non_finite_as_used_up);
